@@ -1,0 +1,34 @@
+//
+//  CreateTweetTableViewController.swift
+//  GerbilTwitter
+//
+//  Created by R-J Lim on 10/29/16.
+//  Copyright © 2016 R-J Lim. All rights reserved.
+//
+
+import UIKit
+
+class CreateTweetViewController: UIViewController {
+    @IBOutlet weak var nameLabel: UILabel!
+    @IBOutlet weak var userImage: UIImageView!
+
+    @IBOutlet weak var tweetTextPlaceHolderLabel: UILabel!
+    @IBOutlet weak var tweetTextView: UITextView!
+    @IBOutlet weak var screenNameLabel: UILabel!
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        tweetTextView.delegate = self
+    }
+    
+}
+
+extension CreateTweetViewController: UITextViewDelegate {
+    
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        self.tweetTextPlaceHolderLabel.isHidden = true
+    }
+    
+    func textViewDidEndEditing(_ textView: UITextView) {
+        self.tweetTextPlaceHolderLabel.isHidden = textView.text == ""
+    }
+}

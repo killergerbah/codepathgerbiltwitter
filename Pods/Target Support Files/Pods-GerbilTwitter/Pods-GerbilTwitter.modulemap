@@ -1,0 +1,6 @@
+framework module Pods_GerbilTwitter {
+  umbrella header "Pods-GerbilTwitter-umbrella.h"
+
+  export *
+  module * { export * }
+}
