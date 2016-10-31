@@ -3,6 +3,8 @@ import UIKit
 protocol ViewTweetViewControllerDelegate: class {
     
     func viewTweetViewControllerUserDidDismiss(_ viewTweetViewController: ViewTweetViewController)
+    
+    func viewTweetViewControllerUserDidReply(_ viewTweetViewController: ViewTweetViewController)
 }
 
 final class ViewTweetViewController: UIViewController {
@@ -27,10 +29,13 @@ final class ViewTweetViewController: UIViewController {
     @IBOutlet weak var retweetButton: UIButton!
     @IBOutlet weak var retweetCountEnglishLabel: UILabel!
     @IBOutlet weak var heartCountEnglishLabel: UILabel!
+    @IBOutlet weak var retweetedImageViewHeightConstraint: NSLayoutConstraint!
+    @IBOutlet weak var retweetedLabelHeightConstraint: NSLayoutConstraint!
+    @IBOutlet weak var retweetedLabel: UILabel!
     
     weak var delegate: ViewTweetViewControllerDelegate?
     
-    private var twitter: Twitter = Twitter.sharedInstance
+    private var twitter: TwitterAdapter = TwitterService()
     
     var tweet: Tweet? {
         didSet(newTweet) {
@@ -47,7 +52,19 @@ final class ViewTweetViewController: UIViewController {
         }
     }
     
-    private func update(withTweet tweet:Tweet) {
+    private func update(withTweet tweet: Tweet) {
+        if let retweet = tweet.retweet {
+            _update(withTweet: retweet)
+            retweetedLabel.text = "\(tweet.user.name) Retweeted"
+        } else {
+            _update(withTweet: tweet)
+            retweetedImageViewHeightConstraint.constant = 0
+            retweetedLabelHeightConstraint.constant = 0
+            retweetedLabel.isHidden = true
+        }
+    }
+    
+    private func _update(withTweet tweet: Tweet) {
         if let profileUrl = tweet.user.profileUrl {
             userImageView.setImageWith(profileUrl)
         } else {
@@ -62,6 +79,7 @@ final class ViewTweetViewController: UIViewController {
         updateRetweet(withTweet: tweet)
         updateHeart(withTweet: tweet)
         userImageView.twitterize()
+
     }
     
     private func updateRetweet(withTweet tweet: Tweet) {
@@ -81,33 +99,27 @@ final class ViewTweetViewController: UIViewController {
     }
     
     @IBAction func onLikeButton(_ sender: AnyObject) {
-        guard let tweet = tweet else {
+        guard let tweet = tweet?.retweet ?? tweet else {
             return
         }
         
         if tweet.favorited {
-            tweet.unheart()
             twitter.unheart(
-                tweetId: tweet.id,
-                success: { (heartCount: Int) in
-                    tweet.unheart(heartCount: heartCount)
+                tweet: tweet,
+                success: { (tweet: Tweet) in
                     self.updateHeart(withTweet: tweet)
                 },
-                failure: { (error: Error) in
-                    tweet.heart()
+                failure: { (error: Error, tweet: Tweet) in
                     self.updateHeart(withTweet: tweet)
                 }
             )
         } else {
-            tweet.heart()
             twitter.heart(
-                tweetId: tweet.id,
-                success: { (heartCount: Int) in
-                    tweet.heart(heartCount: heartCount)
+                tweet: tweet,
+                success: { (tweet: Tweet) in
                     self.updateHeart(withTweet: tweet)
                 },
-                failure: { (error: Error) in
-                    tweet.unheart()
+                failure: { (error: Error, tweet: Tweet) in
                     self.updateHeart(withTweet: tweet)
                 }
             )
@@ -116,32 +128,26 @@ final class ViewTweetViewController: UIViewController {
     }
     
     @IBAction func onRetweetButton(_ sender: AnyObject) {
-        guard let tweet = tweet else {
+        guard let tweet = tweet?.retweet ?? tweet else {
             return
         }
         if tweet.retweeted {
-            tweet.unretweet()
             twitter.unretweet(
-                tweetId: tweet.id,
-                success: { (retweetCount: Int) in
-                    tweet.unretweet(retweetCount: retweetCount)
+                tweet: tweet,
+                success: { (tweet: Tweet) in
                     self.updateRetweet(withTweet: tweet)
                 },
-                failure: { (error: Error) in
-                    tweet.retweet()
+                failure: { (error: Error, tweet: Tweet) in
                     self.updateRetweet(withTweet: tweet)
                 }
             )
         } else {
-            tweet.retweet()
             twitter.retweet(
-                tweetId: tweet.id,
-                success: { (retweetCount: Int) in
-                    tweet.retweet(retweetCount: retweetCount)
+                tweet: tweet,
+                success: { (tweet: Tweet) in
                     self.updateRetweet(withTweet: tweet)
                 },
-                failure: { (error: Error) in
-                    tweet.unretweet()
+                failure: { (error: Error, tweet: Tweet) in
                     self.updateRetweet(withTweet: tweet)
                 }
             )
@@ -174,7 +180,8 @@ extension ViewTweetViewController: CreateTweetViewControllerDelegate {
         createTweetViewController.dismiss(animated: true, completion: nil)
     }
     
-    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController, withText text: String) {
+    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController) {
         createTweetViewController.dismiss(animated: true, completion: nil)
+        delegate?.viewTweetViewControllerUserDidReply(self)
     }
 }

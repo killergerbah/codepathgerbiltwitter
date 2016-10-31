@@ -7,7 +7,7 @@ final class LoginViewController: UIViewController {
     
     @IBOutlet weak var loginButton: UIButton!
     
-    private let twitter = Twitter.sharedInstance
+    private let twitter = TwitterService()
     override func viewDidLoad() {
         super.viewDidLoad()
     }

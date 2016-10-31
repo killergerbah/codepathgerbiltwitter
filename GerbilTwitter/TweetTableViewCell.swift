@@ -21,6 +21,13 @@ class TweetTableViewCell: UITableViewCell {
     @IBOutlet weak var retweetImageView: UIImageView!
     @IBOutlet weak var heartCountLabel: UILabel!
     @IBOutlet weak var retweetCountLabel: UILabel!
+    @IBOutlet weak var retweetLabel: UILabel!
+    @IBOutlet weak var retweetedImageView: UIImageView!
+    @IBOutlet weak var retweetedImageViewHeightConstraint: NSLayoutConstraint!
+    @IBOutlet weak var retweetedLabelHeightConstraint: NSLayoutConstraint!
+    
+    private var retweetedLabelHeight: CGFloat!
+    private var retweetedImageViewHeight: CGFloat!
     
     var tweet: Tweet? {
         didSet {
@@ -33,9 +40,24 @@ class TweetTableViewCell: UITableViewCell {
     override func awakeFromNib() {
         super.awakeFromNib()
         userImage.twitterize()
+        retweetedImageViewHeight = retweetedImageViewHeightConstraint.constant
+        retweetedLabelHeight = retweetedLabelHeightConstraint.constant
     }
     
     private func update(withTweet tweet: Tweet) {
+        if let retweet = tweet.retweet {
+            _update(withTweet: retweet)
+            retweetLabel.text = "\(tweet.user.name) Retweeted"
+            retweetedLabelHeightConstraint.constant = retweetedLabelHeight
+            retweetedImageViewHeightConstraint.constant = retweetedImageViewHeight
+        } else {
+            _update(withTweet: tweet)
+            retweetedLabelHeightConstraint.constant = 0
+            retweetedImageViewHeightConstraint.constant = 0
+        }
+    }
+    
+    private func _update(withTweet tweet: Tweet) {
         nameLabel.text = tweet.user.name
         screenNameLabel.text = tweet.user.screenName
         if let profileUrl = tweet.user.profileUrl {
@@ -62,6 +84,7 @@ class TweetTableViewCell: UITableViewCell {
         } else {
             timeLabel.text = ""
         }
+
     }
     
     private func shortTime(fromSeconds seconds: TimeInterval) -> String {

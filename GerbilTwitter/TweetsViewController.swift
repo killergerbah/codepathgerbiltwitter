@@ -11,10 +11,9 @@ final class TweetsViewController: UIViewController {
     
     weak var delegate: TweetsViewControllerDelegate?
     
-    fileprivate var tweets: [Tweet] = []
     fileprivate var lastSelected: Tweet!
-
-    private let twitter = Twitter.sharedInstance
+    fileprivate var loadingMore = false
+    fileprivate let twitter = TwitterService()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -35,7 +34,18 @@ final class TweetsViewController: UIViewController {
     private func fetchHomeTimeline(completion: (() -> Void)?) {
         twitter.homeTimeline(
             success: { (tweets: [Tweet]) -> Void in
-                self.tweets = tweets
+                self.tweetTableView.reloadData()
+                completion?()
+            },
+            failure: { (Error) -> Void in
+                completion?()
+            }
+        )
+    }
+    
+    fileprivate func fetchMoreHomeTimeline(completion: (() ->Void)?) {
+        twitter.moreHomeTimeline(
+            success: { (tweets: [Tweet]) in
                 self.tweetTableView.reloadData()
                 completion?()
             },
@@ -91,12 +101,12 @@ fileprivate enum Segue: String {
 extension TweetsViewController: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return tweets.count
+        return twitter.homeTimeline.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "TweetCell") as! TweetTableViewCell
-        cell.tweet = tweets[indexPath.row]
+        cell.tweet = twitter.homeTimeline[indexPath.row]
         return cell
     }
 }
@@ -105,14 +115,32 @@ extension TweetsViewController: UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        lastSelected = tweets[indexPath.row]
+        lastSelected = twitter.homeTimeline[indexPath.row]
         performSegue(withIdentifier: Segue.viewTweet.rawValue, sender: self)
+    }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if (!loadingMore && twitter.homeTimeline.count > 0) {
+            let scrollViewContentHeight = tweetTableView.contentSize.height
+            let scrollOffsetThreshold = scrollViewContentHeight - tweetTableView.bounds.size.height
+            if(scrollView.contentOffset.y > scrollOffsetThreshold && tweetTableView.isDragging) {
+                loadingMore = true
+                fetchMoreHomeTimeline(completion: { 
+                    self.loadingMore = false
+                })
+            }
+        }   
     }
 }
 
 extension TweetsViewController: ViewTweetViewControllerDelegate {
     
     func viewTweetViewControllerUserDidDismiss(_ viewTweetViewController: ViewTweetViewController) {
+        viewTweetViewController.dismiss(animated: true, completion: nil)
+        tweetTableView.reloadData()
+    }
+    
+    func viewTweetViewControllerUserDidReply(_ viewTweetViewController: ViewTweetViewController) {
         viewTweetViewController.dismiss(animated: true, completion: nil)
         tweetTableView.reloadData()
     }
@@ -124,7 +152,7 @@ extension TweetsViewController: CreateTweetViewControllerDelegate {
         createTweetViewController.dismiss(animated: true, completion: nil)
     }
     
-    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController, withText text: String) {
+    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController) {
         createTweetViewController.dismiss(animated: true, completion: nil)
     }
 }

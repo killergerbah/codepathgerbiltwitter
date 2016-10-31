@@ -116,9 +116,17 @@ final class Twitter {
     }
     
     func homeTimeline(success: @escaping (([Tweet]) -> Void), failure: ((Error) -> Void)?) {
+        homeTimeline(olderThanId: nil, success: success, failure: failure)
+    }
+    
+    func homeTimeline(olderThanId maxId: Int?, success: @escaping (([Tweet]) -> Void), failure: ((Error) -> Void)?) {
+        var parameters: Dictionary<String, AnyObject> = [:]
+        if let maxId = maxId {
+            parameters["max_id"] = maxId as AnyObject
+        }
         client.get(
             "1.1/statuses/home_timeline.json",
-            parameters: nil,
+            parameters: parameters,
             progress: nil,
             success: { (task: URLSessionDataTask, response: Any?) -> Void in
                 let dictionaries = response as? [Dictionary<String, AnyObject>] ?? []
@@ -155,21 +163,29 @@ final class Twitter {
         )
     }
     
-    func tweet(withText text: String, success: (() -> Void)? , failure: ((Error) -> Void)?) {
+    func tweet(withText text: String, success: ((Tweet) -> Void)? , failure: ((Error) -> Void)?) {
         tweet(withText: text, inReplyToTweet: nil, success: success, failure: failure)
     }
     
-    func tweetBack(withText text: String, inReplyToTweet tweetId: Int, success: (() -> Void)? , failure: ((Error) -> Void)?) {
+    func tweetBack(withText text: String, inReplyToTweet tweetId: Int, success: ((Tweet) -> Void)? , failure: ((Error) -> Void)?) {
         tweet(withText: text, inReplyToTweet: tweetId, success: success, failure: failure)
     }
     
-    private func tweet(withText text: String, inReplyToTweet tweetId: Int?, success: (() -> Void)? , failure: ((Error) -> Void)?) {
+    private func tweet(withText text: String, inReplyToTweet tweetId: Int?, success: ((Tweet) -> Void)? , failure: ((Error) -> Void)?) {
         client.post(
             "1.1/statuses/update.json",
-            parameters: ["status": text],
+            parameters: [
+                "status": text,
+                "in_reply_to_status_id": tweetId
+            ],
             progress: nil,
             success: { (task: URLSessionDataTask, response: Any?) -> Void in
-                success?()
+                if let dictionary = response as? Dictionary<String, AnyObject>,
+                    let tweet = Tweet(dictionary: dictionary) {
+                    success?(tweet)
+                }
+                
+                failure?(TwitterError.failedToDeserialize)
             },
             failure: { (task: URLSessionDataTask?, error: Error) -> Void in
                 failure?(error)
@@ -181,8 +197,22 @@ final class Twitter {
         retweet(tweetId: id, success: success, failure: failure, doing: true)
     }
     
-    func unretweet(tweetId id: Int, success: ((Int) -> Void)? , failure: ((Error) -> Void)?) {
-        retweet(tweetId: id, success: success, failure: failure, doing: false)
+    func myRetweetId(tweetId: Int, success: @escaping ((Int) -> Void), failure: @escaping ((Error) -> Void)) {
+        client.get(
+            "1.1/statuses/show.json",
+            parameters: [
+                "include_my_retweet": true,
+                "id": tweetId
+            ],
+            progress: nil,
+            success: { (task: URLSessionDataTask, response: Any?) -> Void in
+                let retweetId = (response as? Dictionary<String, AnyObject>)?["current_user_retweet"]?["id"] as? Int ?? 0
+                success(retweetId)
+            },
+            failure:{ (task: URLSessionDataTask?, error: Error) -> Void in
+                failure(error)
+            }
+        )
     }
     
     func retweet(tweetId id: Int, success: ((Int) -> Void)? , failure: ((Error) -> Void)?, doing: Bool) {
@@ -193,6 +223,7 @@ final class Twitter {
             progress: nil,
             success: { (task: URLSessionDataTask, response: Any?) -> Void in
                 let retweetCount = (response as? Dictionary<String, AnyObject>)?["retweet_count"] as? Int ?? 0
+                print("\(response)")
                 success?(retweetCount)
             },
             failure: { (task: URLSessionDataTask?, error: Error) -> Void in
@@ -269,10 +300,15 @@ extension Tweet {
         let favoritesCount = dictionary["favorite_count"] as? Int ?? 0
         let favorited = dictionary["favorited"] as? Bool ?? false
         var timestamp: Date? = nil
+        let retweet = Tweet(dictionary: dictionary["retweeted_status"] as? Dictionary<String, AnyObject> ?? [:])
         if let createdAt = dictionary["created_at"] as? String {
             timestamp = Tweet.dateFormatter.date(from: createdAt)
         }
         
-        self.init(id: id, user: user, text: text, timestamp: timestamp, retweetCount: retweetCount, retweeted: retweeted, favoritesCount: favoritesCount, favorited: favorited)
+        self.init(id: id, user: user, text: text, timestamp: timestamp, retweetCount: retweetCount, retweeted: retweeted, favoritesCount: favoritesCount, favorited: favorited, retweet: retweet)
     }
+}
+
+enum TwitterError: Error {
+    case failedToDeserialize
 }

@@ -4,7 +4,7 @@ protocol CreateTweetViewControllerDelegate: class {
     
     func createTweetViewControllerWasCanceled(_ createTweetViewController: CreateTweetViewController)
     
-    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController, withText text: String)
+    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController)
 }
 
 final class CreateTweetViewController: UIViewController {
@@ -22,7 +22,7 @@ final class CreateTweetViewController: UIViewController {
     
     var replyTweet: Tweet?
     
-    private let twitter = Twitter.sharedInstance
+    private let twitter = TwitterService()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -44,7 +44,16 @@ final class CreateTweetViewController: UIViewController {
         
         if let replyTweet = replyTweet {
             navigationItem.title = "Reply"
-            tweetTextView.text = "@\(replyTweet.user.screenName) "
+            var recipients = [replyTweet.user.screenName]
+            if let retweetScreenName = replyTweet.retweet?.user.screenName {
+                recipients.append(retweetScreenName)
+            }
+            
+            tweetTextView.text = recipients
+                .map({ (screenName: String) -> String in
+                    return "@\(screenName) "
+                })
+                .joined(separator: "")
         } else {
             navigationItem.title = ""
         }
@@ -60,11 +69,23 @@ final class CreateTweetViewController: UIViewController {
     
     @IBAction func onTweetButton(_ sender: AnyObject) {
         if let replyTweet = replyTweet {
-            twitter.tweetBack(withText: tweetTextView.text, inReplyToTweet: replyTweet.id, success: nil, failure: nil)
+            twitter.tweetBack(
+                withText: tweetTextView.text,
+                inReplyToTweet: replyTweet.id,
+                success: { () -> Void in
+                    self.delegate?.createTweetViewControllerDidTweet(self)
+                },
+                failure: nil
+            )
         } else {
-            twitter.tweet(withText: tweetTextView.text, success: nil, failure: nil)
+            twitter.tweet(
+                withText: tweetTextView.text,
+                success: { () -> Void in
+                    self.delegate?.createTweetViewControllerDidTweet(self)
+                },
+                failure: nil
+            )
         }
-        delegate?.createTweetViewControllerDidTweet(self, withText: tweetTextView.text)
     }
 }
 
