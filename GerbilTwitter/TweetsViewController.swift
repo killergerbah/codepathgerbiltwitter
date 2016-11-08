@@ -5,62 +5,46 @@ protocol TweetsViewControllerDelegate: class {
     func tweetsViewController(_ tweetsViewController: TweetsViewController, userDidSignout user: User?)
 }
 
-final class TweetsViewController: UIViewController {
-
+final class TweetsViewController: InnerContentViewController {
+    
     @IBOutlet weak var tweetTableView: UITableView!
     
     weak var delegate: TweetsViewControllerDelegate?
     
-    fileprivate var lastSelected: Tweet!
-    fileprivate var loadingMore = false
-    fileprivate let twitter = TwitterService()
+    var timelineType: TimelineType = TimelineType.home
+
+    fileprivate var timelineTableViewController: TimelineTableViewController!
+    fileprivate var lastSelectedTweet: Tweet!
+    fileprivate var lastSelectedUser: User!
+    fileprivate var timeline: Timeline!
+
+    private let twitter = TwitterService()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        tweetTableView.dataSource = self
-        tweetTableView.delegate = self
+        
         tweetTableView.rowHeight = UITableViewAutomaticDimension
         tweetTableView.estimatedRowHeight = 100
         
-        let refreshControl = UIRefreshControl()
-        refreshControl.addTarget(self, action: #selector(refreshControlAction(refreshControl:)), for: UIControlEvents.valueChanged)
+        timeline = timeline(twitter: twitter)
+        timelineTableViewController = TimelineTableViewController(twitter: twitter, timeline: timeline, tweetTableView: tweetTableView)
         
-        tweetTableView.insertSubview(refreshControl, at: 0)
-        
-        fetchHomeTimeline(completion: nil)
+        timelineTableViewController.setup(dataSource: TimelineTableViewDataSource(timeline: timeline, delegate: self, cellId: "Tweet"))
+        timelineTableViewController.delegate = self
     }
     
-    private func fetchHomeTimeline(completion: (() -> Void)?) {
-        twitter.homeTimeline(
-            success: { (tweets: [Tweet]) -> Void in
-                self.tweetTableView.reloadData()
-                completion?()
-            },
-            failure: { (Error) -> Void in
-                completion?()
-            }
-        )
-    }
-    
-    fileprivate func fetchMoreHomeTimeline(completion: (() ->Void)?) {
-        twitter.moreHomeTimeline(
-            success: { (tweets: [Tweet]) in
-                self.tweetTableView.reloadData()
-                completion?()
-            },
-            failure: { (Error) -> Void in
-                completion?()
-            }
-        )
-    }
-    
-    @objc private func refreshControlAction(refreshControl: UIRefreshControl) {
-        fetchHomeTimeline { 
-            refreshControl.endRefreshing()
+    private func timeline(twitter: TwitterAdapter) -> Timeline {
+        switch timelineType {
+        case .home:
+            return HomeTimeline(twitter: twitter)
+        case .mentions:
+            return MentionsTimeline(twitter: twitter)
         }
     }
-
+    
+    @IBAction func onBackButton(_ sender: AnyObject) {
+        contentDelegate?.dismissWasRequested(self)
+    }
     @IBAction func onNewTweetButton(_ sender: AnyObject) {
         performSegue(withIdentifier: Segue.createTweet.rawValue, sender: self)
     }
@@ -81,55 +65,42 @@ final class TweetsViewController: UIViewController {
             if let navigationController = segue.destination as? UINavigationController,
                 let createTweetViewController = navigationController.topViewController as? CreateTweetViewController {
                 createTweetViewController.delegate = self
+                createTweetViewController.timeline = timeline
             }
             break
         case .viewTweet:
             if let navigationController = segue.destination as? UINavigationController,
                 let viewTweetViewController = navigationController.topViewController as? ViewTweetViewController {
                 viewTweetViewController.delegate = self
-                viewTweetViewController.tweet = lastSelected
+                viewTweetViewController.tweet = lastSelectedTweet
             }
             break
+        case .viewProfile:
+            if let navigationController = segue.destination as? UINavigationController,
+                let profileViewController = navigationController.topViewController as? ProfileViewController {
+                profileViewController.user = lastSelectedUser
+                profileViewController.delegate = self
+            }
         }
     }
 }
 
-fileprivate enum Segue: String {
-    case createTweet = "CreateTweetSegue"
-    case viewTweet = "ViewTweetSegue"
-}
-extension TweetsViewController: UITableViewDataSource {
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return twitter.homeTimeline.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "TweetCell") as! TweetTableViewCell
-        cell.tweet = twitter.homeTimeline[indexPath.row]
-        return cell
-    }
+enum TimelineType {
+    case home
+    case mentions
 }
 
-extension TweetsViewController: UITableViewDelegate {
+fileprivate enum Segue: String {
+    case createTweet = "CreateTweet"
+    case viewTweet = "ViewTweet"
+    case viewProfile = "ViewProfile"
+}
+
+extension TweetsViewController: TimelineTableViewControllerDelegate {
     
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        lastSelected = twitter.homeTimeline[indexPath.row]
+    func timelineTableViewController(_ controller: TimelineTableViewController, didSelectTweet tweet: Tweet) {
+        lastSelectedTweet = tweet
         performSegue(withIdentifier: Segue.viewTweet.rawValue, sender: self)
-    }
-    
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        if (!loadingMore && twitter.homeTimeline.count > 0) {
-            let scrollViewContentHeight = tweetTableView.contentSize.height
-            let scrollOffsetThreshold = scrollViewContentHeight - tweetTableView.bounds.size.height
-            if(scrollView.contentOffset.y > scrollOffsetThreshold && tweetTableView.isDragging) {
-                loadingMore = true
-                fetchMoreHomeTimeline(completion: { 
-                    self.loadingMore = false
-                })
-            }
-        }   
     }
 }
 
@@ -140,8 +111,9 @@ extension TweetsViewController: ViewTweetViewControllerDelegate {
         tweetTableView.reloadData()
     }
     
-    func viewTweetViewControllerUserDidReply(_ viewTweetViewController: ViewTweetViewController) {
+    func viewTweetViewControllerUserDidReply(_ viewTweetViewController: ViewTweetViewController, tweet: Tweet) {
         viewTweetViewController.dismiss(animated: true, completion: nil)
+        timeline.insert(tweet: tweet)
         tweetTableView.reloadData()
     }
 }
@@ -152,7 +124,24 @@ extension TweetsViewController: CreateTweetViewControllerDelegate {
         createTweetViewController.dismiss(animated: true, completion: nil)
     }
     
-    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController) {
+    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController, tweet: Tweet) {
         createTweetViewController.dismiss(animated: true, completion: nil)
+        timeline.insert(tweet: tweet)
+        tweetTableView.reloadData()
+    }
+}
+
+extension TweetsViewController: TweetTableViewCellDelegate {
+    
+    func onProfileSelected(_ user: User) {
+        lastSelectedUser = user
+        performSegue(withIdentifier: Segue.viewProfile.rawValue, sender: self)
+    }
+}
+
+extension TweetsViewController: ProfileViewControllerDelegate {
+    
+    func profileViewControllerWasDismissed(_ viewController: ProfileViewController) {
+        viewController.dismiss(animated: true, completion: nil)
     }
 }

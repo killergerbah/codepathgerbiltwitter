@@ -1,14 +1,10 @@
-//
-//  TweetTableViewCell.swift
-//  GerbilTwitter
-//
-//  Created by R-J Lim on 10/29/16.
-//  Copyright © 2016 R-J Lim. All rights reserved.
-//
-
 import UIKit
 
-class TweetTableViewCell: UITableViewCell {
+protocol TweetTableViewCellDelegate: class {
+    func onProfileSelected(_ user: User)
+}
+
+final class TweetTableViewCell: UITableViewCell {
 
     private static let unselectedColor = UIColor.lightGray
     
@@ -26,12 +22,15 @@ class TweetTableViewCell: UITableViewCell {
     @IBOutlet weak var retweetedImageViewHeightConstraint: NSLayoutConstraint!
     @IBOutlet weak var retweetedLabelHeightConstraint: NSLayoutConstraint!
     
+    weak var delegate: TweetTableViewCellDelegate?
+    
     private var retweetedLabelHeight: CGFloat!
     private var retweetedImageViewHeight: CGFloat!
     
     var tweet: Tweet? {
-        didSet {
-            if let tweet = tweet {
+        didSet(oldTweet) {
+            if let tweet = tweet,
+                oldTweet == nil || tweet.id != oldTweet!.id {
                 update(withTweet: tweet)
             }
         }
@@ -42,6 +41,16 @@ class TweetTableViewCell: UITableViewCell {
         userImage.twitterize()
         retweetedImageViewHeight = retweetedImageViewHeightConstraint.constant
         retweetedLabelHeight = retweetedLabelHeightConstraint.constant
+        
+        let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(onProfileTap))
+        userImage.addGestureRecognizer(tapGestureRecognizer)
+        userImage.isUserInteractionEnabled = true
+    }
+    
+    @objc private func onProfileTap(sender: UITapGestureRecognizer) {
+        if let selected = tweet?.retweet ?? tweet {
+            delegate?.onProfileSelected(selected.user)
+        }
     }
     
     private func update(withTweet tweet: Tweet) {

@@ -4,7 +4,7 @@ protocol ViewTweetViewControllerDelegate: class {
     
     func viewTweetViewControllerUserDidDismiss(_ viewTweetViewController: ViewTweetViewController)
     
-    func viewTweetViewControllerUserDidReply(_ viewTweetViewController: ViewTweetViewController)
+    func viewTweetViewControllerUserDidReply(_ viewTweetViewController: ViewTweetViewController, tweet: Tweet)
 }
 
 final class ViewTweetViewController: UIViewController {
@@ -180,8 +180,8 @@ extension ViewTweetViewController: CreateTweetViewControllerDelegate {
         createTweetViewController.dismiss(animated: true, completion: nil)
     }
     
-    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController) {
+    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController, tweet: Tweet) {
         createTweetViewController.dismiss(animated: true, completion: nil)
-        delegate?.viewTweetViewControllerUserDidReply(self)
+        delegate?.viewTweetViewControllerUserDidReply(self, tweet: tweet)
     }
 }

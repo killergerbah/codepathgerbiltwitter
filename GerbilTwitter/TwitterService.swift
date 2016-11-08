@@ -3,7 +3,6 @@ import Foundation
 final class TwitterService: TwitterAdapter {
     
     private static let twitter = Twitter.sharedInstance
-    private static var _homeTimeline: [Tweet] = []
     
     private var twitter: Twitter {
         return TwitterService.twitter
@@ -17,10 +16,6 @@ final class TwitterService: TwitterAdapter {
         return twitter.loggedIn
     }
     
-    var homeTimeline: [Tweet] {
-        return TwitterService._homeTimeline
-    }
-    
     func login(success: @escaping () -> Void, failure: @escaping (Error?) -> Void) {
         twitter.login(success: success, failure: failure)
     }
@@ -29,52 +24,92 @@ final class TwitterService: TwitterAdapter {
         twitter.logout()
     }
     
+    func lookup(user userId: Int, success: @escaping ((User) -> Void), failure: ((Error) -> Void)?) {
+        twitter.lookup(
+            user: userId,
+            success: { (user: User) -> Void in
+                success(user)
+            },
+            failure: failure
+        )
+    }
+    
     func homeTimeline(success: @escaping (([Tweet]) -> Void), failure: ((Error) -> Void)?) {
         twitter.homeTimeline(
             success: { (tweets: [Tweet]) -> Void in
-                TwitterService._homeTimeline = tweets
                 success(tweets)
             },
             failure: failure
         )
     }
     
-    func moreHomeTimeline(success: @escaping (([Tweet]) -> Void), failure: ((Error) -> Void)?) {
-        var minId = Int.max
-        for tweet in TwitterService._homeTimeline {
-            if tweet.id < minId {
-                minId = tweet.id
-            }
-        }
-        
+    func homeTimeline(olderThanId id: Int, success: @escaping (([Tweet]) -> Void), failure: ((Error) -> Void)?) {
         twitter.homeTimeline(
-            olderThanId: minId,
+            olderThanId: id,
             success: { (tweets: [Tweet]) -> Void in
-                TwitterService._homeTimeline.append(contentsOf: tweets)
                 success(tweets)
             },
             failure: failure
         )
     }
     
-    func tweet(withText text: String, success: (() -> Void)? , failure: ((Error) -> Void)?) {
+    func mentionsTimeline(success: @escaping (([Tweet]) -> Void), failure: ((Error) -> Void)?) {
+        twitter.mentionsTimeline(
+            success: { (tweets: [Tweet]) -> Void in
+                success(tweets)
+            },
+            failure: failure
+        )
+    }
+    
+    func mentionsTimeline(olderThanId id: Int, success: @escaping (([Tweet]) -> Void), failure: ((Error) -> Void)?) {
+        twitter.mentionsTimeline(
+            olderThanId: id,
+            success: { (tweets: [Tweet]) -> Void in
+                success(tweets)
+            },
+            failure: failure
+        )
+    }
+    
+    func timeline(forUser userId: Int, success: @escaping (([Tweet]) -> Void), failure: ((Error) -> Void)?) {
+        twitter.timeline(
+            forUser: userId,
+            success: { (tweets: [Tweet]) -> Void in
+                success(tweets)
+            },
+            failure: failure
+        )
+    }
+    
+    
+    func timeline(forUser userId: Int, olderThanId id: Int, success: @escaping (([Tweet]) -> Void), failure: ((Error) -> Void)?) {
+        twitter.timeline(
+            forUser: userId,
+            olderThanId: id,
+            success: { (tweets: [Tweet]) -> Void in
+                success(tweets)
+            },
+            failure: failure
+        )
+    }
+    
+    func tweet(withText text: String, success: ((Tweet) -> Void)? , failure: ((Error) -> Void)?) {
         twitter.tweet(
             withText: text,
             success: { (tweet: Tweet) -> Void in
-                TwitterService._homeTimeline.insert(tweet, at: 0)
-                success?()
+                success?(tweet)
             },
             failure: failure
         )
     }
-    
-    func tweetBack(withText text: String, inReplyToTweet tweetId: Int, success: (() -> Void)? , failure: ((Error) -> Void)?) {
+
+    func tweetBack(withText text: String, inReplyToTweet tweetId: Int, success: ((Tweet) -> Void)? , failure: ((Error) -> Void)?) {
         twitter.tweetBack(
             withText: text,
             inReplyToTweet: tweetId,
             success: { (tweet: Tweet) -> Void in
-                TwitterService._homeTimeline.insert(tweet, at: 0)
-                success?()
+                success?(tweet)
             },
             failure: failure
         )

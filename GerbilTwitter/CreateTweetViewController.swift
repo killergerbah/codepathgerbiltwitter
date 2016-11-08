@@ -4,10 +4,10 @@ protocol CreateTweetViewControllerDelegate: class {
     
     func createTweetViewControllerWasCanceled(_ createTweetViewController: CreateTweetViewController)
     
-    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController)
+    func createTweetViewControllerDidTweet(_ createTweetViewController: CreateTweetViewController, tweet: Tweet)
 }
 
-final class CreateTweetViewController: UIViewController {
+final class CreateTweetViewController: InnerContentViewController {
 
     fileprivate static let characterLimit = 140
     
@@ -21,6 +21,7 @@ final class CreateTweetViewController: UIViewController {
     weak var delegate: CreateTweetViewControllerDelegate?
     
     var replyTweet: Tweet?
+    var timeline: Timeline?
     
     private let twitter = TwitterService()
     
@@ -72,16 +73,16 @@ final class CreateTweetViewController: UIViewController {
             twitter.tweetBack(
                 withText: tweetTextView.text,
                 inReplyToTweet: replyTweet.id,
-                success: { () -> Void in
-                    self.delegate?.createTweetViewControllerDidTweet(self)
+                success: { (tweet: Tweet) -> Void in
+                    self.delegate?.createTweetViewControllerDidTweet(self, tweet: tweet)
                 },
                 failure: nil
             )
         } else {
             twitter.tweet(
                 withText: tweetTextView.text,
-                success: { () -> Void in
-                    self.delegate?.createTweetViewControllerDidTweet(self)
+                success: { (tweet: Tweet) -> Void in
+                    self.delegate?.createTweetViewControllerDidTweet(self, tweet: tweet)
                 },
                 failure: nil
             )

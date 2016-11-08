@@ -16,6 +16,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
+        
+        /*let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        let hamburgerViewController = storyboard.instantiateViewController(withIdentifier: "Hamburger") as!HamburgerViewController
+        let menuViewController = storyboard.instantiateViewController(withIdentifier: "Menu") as! MenuViewController
+        hamburgerViewController.menuViewController = menuViewController
+        hamburgerViewController.initialViewController = storyboard.instantiateViewController(withIdentifier: "Login")
+        menuViewController.content = hamburgerViewController
+        menuViewController.items = [
+            MenuItem(viewController: storyboard.instantiateViewController(withIdentifier: "Home"), image: nil, text: "Home")
+        ]
+        window?.rootViewController = hamburgerViewController*/
         return true
     }
 
