@@ -1,53 +1,42 @@
-# Project 3 - *Gerbil Twitter*
+# Project 4 - *Gerbil Twitter*
 
-**Gerbil Twitter** is a basic twitter app to read and compose tweets from the [Twitter API](https://apps.twitter.com/).
-
-Time spent: **15** hours spent in total
+Time spent: **10** hours spent in total
 
 ## User Stories
 
 The following **required** functionality is completed:
 
-- [ ] User can sign in using OAuth login flow.
-- [ ] User can view last 20 tweets from their home timeline.
-- [ ] The current signed in user will be persisted across restarts.
-- [ ] In the home timeline, user can view tweet with the user profile picture, username, tweet text, and timestamp.  In other words, design the custom cell with the proper Auto Layout settings.  You will also need to augment the model classes.
-- [ ] User can pull to refresh.
-- [ ] User can compose a new tweet by tapping on a compose button.
-- [ ] User can tap on a tweet to view it, with controls to retweet, favorite, and reply.
-
-The following **optional** features are implemented:
-
-- [ ] When composing, you should have a countdown in the upper right for the tweet limit.
-- [ ] After creating a new tweet, a user should be able to view it in the timeline immediately without refetching the timeline from the network.
-- [ ] Retweeting and favoriting should increment the retweet and favorite count.
-- [ ] User should be able to unretweet and unfavorite and should decrement the retweet and favorite count.
-- [ ] Replies should be prefixed with the username and the reply id should be set when posting the tweet,
-- [ ] User can load more tweets once they reach the bottom of the feed using infinite loading similar to the actual Twitter client.
+- [ ] Hamburger menu
+   - [ ] Dragging anywhere in the view should reveal the menu.
+   - [ ] The menu should include links to your profile, the home timeline, and the mentions view.
+   - [ ] The menu can look similar to the example or feel free to take liberty with the UI.
+- [ ] Profile page
+   - [ ] Contains the user header view
+   - [ ] Contains a section with the users basic stats: # tweets, # following, # followers
+- [ ] Home Timeline
+   - [ ] Tapping on a user image should bring up that user's profile page
 
 Please list two areas of the assignment you'd like to **discuss further with your peers** during the next class (examples include better ways to implement something, how to extend your app in certain ways, etc):
 
-1. Solving the "<X> retweeted <Y>" label problem where the label should appear and disappear and constraints in the view should adjust accordingly.
-2. Retweeting in general, seems a bit jank how we have to deal with it.
+  1. How did others design navigation? For some reason it felt natural to implement a back button for navigating between different items on the menu but that ended up being incredibly tedious to do.
+  2. Generally how to reuse view controller code without having to control-drag more or less the same things over and over again just to duplicate code that already existed in the same form.
+
 
 ## Video Walkthrough
 
 Here's a walkthrough of implemented user stories:
 
-<img src='http://i.imgur.com/yBxTBZk.gif' title='Video Walkthrough' width='' alt='Video Walkthrough' />
-<img src='http://i.imgur.com/tQpUw2W.gif' title='Video Walkthrough' width='' alt='Video Walkthrough' />
-
+<img src='http://i.imgur.com/XX572ne.gif' title='Video Walkthrough' width='' alt='Video Walkthrough' />
 
 GIF created with [LiceCap](http://www.cockos.com/licecap/).
 
 ## Notes
 
 Describe any challenges encountered while building the app.
-- [ ] Retweeting.
-- [ ] "Predicting" certain API responses and displaying them to the user. Syncing those when a response came back.
-- [ ] Twitter API docs being out of date (e.g. favourites instead of favorites in certain keys)
-- [ ] Implementing the "<X> retweeted <Y>" label that pushes the rest of the contents of the view up and down.
-- [ ] Figuring out retweets in general, the fact that the "retweeted status" key exists.
+
+1. I found it incredibly difficult to reuse UI code without implementing a lot of state within the view controller itself i.e. some kind of type enum to display different things using more or less the same code. 
+
+2. To support a back button, I ended up having to make assumptions about the view controllers I was having the hamburger menu view controller manage - namely that they were UINavigationControllers and that the navigation controllers' visible view controllers were the ones I really cared about. Managing this tree of controllers is really frustrating and I can't think of a more consistent way to do it.
 
 ## License
 

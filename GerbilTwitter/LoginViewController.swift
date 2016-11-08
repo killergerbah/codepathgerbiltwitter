@@ -83,7 +83,6 @@ final class LoginViewController: UIViewController {
         let mentionsViewController = navigationController.topViewController as! TweetsViewController
         mentionsViewController.delegate = self
         mentionsViewController.timelineType = TimelineType.mentions
-        // mentionsViewController.reload()
         
         return navigationController
     }
